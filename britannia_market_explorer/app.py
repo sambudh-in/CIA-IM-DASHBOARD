@@ -1,4 +1,3 @@
-
 import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
@@ -170,44 +169,122 @@ hr {{
 
 # ============================================================
 # 2. RESEARCH DATA
-# Original project figures retained
+# Updated to match the revised CIA 1 report (21/11/2026)
 # ============================================================
 
+# Sweet biscuit market, ZAR billion
+# 2023 published (GlobalData); 2024-2028 author's estimate at 6% growth
 market = pd.DataFrame({
     "Year": [2023, 2024, 2025, 2026, 2027, 2028],
     "Market Size": [4.70, 4.98, 5.28, 5.60, 5.93, 6.29]
 })
 
+# Risk register: likelihood (L) x impact (I), each 1-5
 risk = pd.DataFrame({
     "Factor": [
-        "Economic",
-        "Political",
-        "Legal",
-        "Environmental",
-        "Cultural",
-        "Technological"
+        "Competition from local incumbents and low-cost importers",
+        "Import duty, no preferential access (21%)",
+        "Ocean freight and shipping disruption",
+        "Currency risk (rand volatility)",
+        "Payment and counterparty risk",
+        "Raw material prices (wheat, sugar, palm oil)",
+        "Port and logistics inefficiency",
+        "Labelling and regulatory compliance",
+        "Weak consumer demand (growth about 1%)"
     ],
-    "Score": [4, 3, 3, 3, 2, 2]
+    "L": [5, 5, 4, 4, 3, 4, 3, 3, 3],
+    "I": [4, 4, 4, 3, 4, 3, 3, 3, 3],
+    "Response": [
+        "Price-pack architecture; cream, wafer and rusk formats; distributor incentives",
+        "Price from landed cost; follow SACU talks; assess local co-packing",
+        "Contracted freight, Durban and Cape Town options, buffer stock",
+        "Invoice in US$ or hedge; price-review clause",
+        "Letters of credit, credit insurance, staged terms",
+        "Index-linked price clauses; forward cover",
+        "Clearing agent; bonded buffer stock",
+        "Pre-clear artwork; verify rules before launch",
+        "Entry price packs; trade promotions"
+    ]
 })
+
+risk["Score"] = risk["L"] * risk["I"]
+
+
+def risk_level(score):
+    if score >= 15:
+        return "High"
+    if score >= 8:
+        return "Medium"
+    return "Low"
+
+
+risk["Level"] = risk["Score"].apply(risk_level)
+
+AVG_RISK = risk["Score"].mean()   # 13.2 out of 25
+
+# Segmentation: five route-to-customer segments
+criteria = [
+    "Segment size",
+    "Growth outlook",
+    "Ease of access (listing, duty)",
+    "Competitive intensity",
+    "Margin potential",
+    "Fit with Britannia capability"
+]
+
+base_weights = [25, 20, 20, 15, 10, 10]
+
+# Growth-heavy sensitivity case: growth 35%, size 10%
+growth_weights = [10, 35, 20, 15, 10, 10]
+
+segment_scores = {
+    "A. Modern grocery chains":        [5, 3, 2, 2, 2, 4],
+    "B. Wholesale and cash-and-carry": [4, 3, 4, 3, 2, 4],
+    "C. Informal trade and spaza":     [4, 3, 3, 2, 3, 5],
+    "D. Indian-diaspora grocers":      [2, 2, 5, 4, 4, 5],
+    "E. E-commerce and quick commerce": [2, 5, 4, 3, 3, 3]
+}
+
+
+def weighted(values, weights):
+    total_w = sum(weights)
+    return sum(v * w for v, w in zip(values, weights)) / total_w
+
 
 segments = pd.DataFrame({
-    "Segment": [
-        "Indian-origin households",
-        "Price-sensitive mass market",
-        "Young urban professionals",
-        "Health-conscious families",
-        "Lunchbox and school-snack parents"
-    ],
-    "Score": [3.9, 3.2, 2.9, 2.3, 3.7]
+    "Segment": list(segment_scores.keys()),
+    "Score": [
+        weighted(v, base_weights) for v in segment_scores.values()
+    ]
 })
 
-trade = pd.DataFrame({
-    "Trade Flow": [
-        "India to South Africa",
-        "South Africa to India"
-    ],
-    "Value": [10, 8]
+# India - South Africa trade, US$ billion
+trade_total = pd.DataFrame({
+    "Period": ["FY2024-25", "FY2025-26"],
+    "Value": [18.00, 15.56]
 })
+
+trade_flow = pd.DataFrame({
+    "Trade Flow": [
+        "Indian exports to South Africa",
+        "Indian imports from South Africa"
+    ],
+    "Value": [7.00, 8.56]
+})
+
+# South African HS 1905 imports by supplier, 2023 (share of value, %)
+suppliers = pd.DataFrame({
+    "Supplier": [
+        "India", "Bahrain", "Malaysia", "United Kingdom", "Poland",
+        "Spain", "Canada", "Netherlands", "Germany", "Belgium"
+    ],
+    "Share": [12.9, 11.1, 10.8, 7.0, 6.5, 5.5, 3.7, 3.5, 3.1, 2.9]
+})
+
+# Landed cost multiplier: 21% duty, then 15% VAT on duty-paid value
+DUTY = 0.21
+VAT = 0.15
+LANDED_MULTIPLE = (1 + DUTY) * (1 + VAT)   # about 1.39
 
 
 # ============================================================
@@ -870,15 +947,8 @@ def display_animated_globe():
 # ============================================================
 
 
-
 # ============================================================
-# 5. PROFESSIONAL DASHBOARD HEADER
-# ============================================================
-
-
-# ============================================================
-# PROFESSIONAL BRITANNIA HEADER - NATIVE STREAMLIT
-# No HTML rendering required
+# 5. PROFESSIONAL BRITANNIA HEADER - NATIVE STREAMLIT
 # ============================================================
 
 header_left, header_right = st.columns([3, 1])
@@ -946,10 +1016,10 @@ if selected == "Overview":
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("POPULATION", "63 Million")
-    c2.metric("NOMINAL GDP", "$401 Billion")
+    c1.metric("POPULATION", "63.5 Million")
+    c2.metric("NOMINAL GDP", "$426.4 Billion")
     c3.metric("BISCUIT MARKET", "ZAR 4.70B")
-    c4.metric("MARKET RISK", "2.8 / 5")
+    c4.metric("MARKET RISK", f"{AVG_RISK:.1f} / 25")
 
     st.write("")
 
@@ -981,6 +1051,13 @@ if selected == "Overview":
 
         st.caption("Countries served")
 
+        st.markdown(
+            '<div class="big-number">₹18,858 Cr</div>',
+            unsafe_allow_html=True
+        )
+
+        st.caption("Consolidated sales, FY26")
+
         st.divider()
 
         st.markdown(
@@ -990,7 +1067,7 @@ if selected == "Overview":
 
         st.subheader("Marie Gold")
 
-        st.caption("Plain tea-time biscuit")
+        st.caption("Plain tea-time biscuit (HS 1905.31)")
 
         st.success("Recommended launch product")
 
@@ -1002,10 +1079,10 @@ if selected == "Overview":
         )
 
         st.write("Unemployment")
-        st.markdown("**32.7%**")
+        st.markdown("**33.6%**")
 
         st.write("Inflation")
-        st.markdown("**3.1%**")
+        st.markdown("**4.5%**")
 
 
     # CENTRE PANEL
@@ -1060,9 +1137,9 @@ if selected == "Overview":
             unsafe_allow_html=True
         )
 
-        st.metric("TARGET SEGMENT SCORE", "3.9 / 5")
+        st.metric("TARGET SEGMENT SCORE", "3.45 / 5")
 
-        st.metric("INDIA–SA TRADE", "$18 Billion")
+        st.metric("INDIA–SA TRADE", "$15.56 Billion")
 
         st.metric("TRADE / GDP", "61.6%")
 
@@ -1080,7 +1157,8 @@ if selected == "Overview":
         )
 
         st.caption(
-            "Initial target: Indian-origin households"
+            "Initial target: Wholesale buyers and "
+            "Indian-diaspora grocers"
         )
 
 
@@ -1095,7 +1173,7 @@ if selected == "Overview":
     with chart1:
 
         st.markdown(
-            '<div class="panel-title">SOUTH AFRICA BISCUIT MARKET GROWTH</div>',
+            '<div class="panel-title">SOUTH AFRICA SWEET BISCUIT MARKET GROWTH</div>',
             unsafe_allow_html=True
         )
 
@@ -1115,13 +1193,14 @@ if selected == "Overview":
         show_chart(fig)
 
         st.caption(
-            "2023 reported baseline; later years are illustrative estimates."
+            "2023 from GlobalData (ZAR billion); 2024 to 2028 are "
+            "the author's estimate at 6% growth."
         )
 
     with chart2:
 
         st.markdown(
-            '<div class="panel-title">COUNTRY RISK DISTRIBUTION</div>',
+            '<div class="panel-title">RISK REGISTER SCORES</div>',
             unsafe_allow_html=True
         )
 
@@ -1130,15 +1209,18 @@ if selected == "Overview":
             x="Score",
             y="Factor",
             orientation="h",
-            range_x=[0, 5]
+            range_x=[0, 25]
         )
 
         fig.update_traces(marker_color=GREEN)
 
+        fig.update_layout(yaxis_title=None)
+
         show_chart(fig)
 
         st.caption(
-            "Qualitative risk scores from the project dataset."
+            "Likelihood × impact, out of 25. High risk is 15 or more. "
+            "Scores are the author's judgement."
         )
 
 
@@ -1151,31 +1233,108 @@ elif selected == "Country & Trade":
     st.title("Country & Trade Intelligence")
 
     st.caption(
-        "South Africa · Economic and cultural environment"
+        "South Africa · Economic, trade and cultural environment"
     )
 
     a, b, c, d = st.columns(4)
 
-    a.metric("GDP PER CAPITA", "$6,253")
-    b.metric("UNEMPLOYMENT", "32.7%")
-    c.metric("INFLATION", "3.1%")
+    a.metric("INFLATION (SEP 2026)", "4.5%")
+    b.metric("UNEMPLOYMENT (Q2 2026)", "33.6%")
+    c.metric("REPO RATE", "7.25%")
     d.metric("TRADE / GDP", "61.6%")
+
+    e, f, g, h = st.columns(4)
+
+    e.metric("REAL GDP GROWTH (2025)", "1.1%")
+    f.metric("YOUTH UNEMPLOYMENT", "62.8%")
+    g.metric("BELOW US$3.65 A DAY", "34%")
+    h.metric("RAND PER US$", "≈ 16.5")
+
+    st.caption(
+        "Population 63.52 million (mid-2026) · Urban population 69.3% · "
+        "Nominal GDP US$426.4 billion (2025). "
+        "Re-check these figures before submission."
+    )
 
     st.subheader("India–South Africa Bilateral Trade")
 
+    t1, t2 = st.columns(2)
+
+    with t1:
+
+        fig = px.bar(
+            trade_total,
+            x="Period",
+            y="Value"
+        )
+
+        fig.update_traces(marker_color=GREEN)
+
+        fig.update_layout(yaxis_title="US$ billion")
+
+        show_chart(fig)
+
+        st.caption(
+            "Bilateral trade fell 13.6% from US$18.0 billion "
+            "in FY2024–25 to US$15.56 billion in FY2025–26."
+        )
+
+    with t2:
+
+        fig = px.bar(
+            trade_flow,
+            x="Trade Flow",
+            y="Value"
+        )
+
+        fig.update_traces(marker_color=GREEN)
+
+        fig.update_layout(yaxis_title="US$ billion")
+
+        show_chart(fig)
+
+        st.caption(
+            "FY2025–26: Indian exports US$7.00 billion, imports "
+            "US$8.56 billion, a deficit of about US$1.56 billion "
+            "for India."
+        )
+
+    st.subheader("Duty and Landed Cost")
+
+    d1, d2, d3, d4 = st.columns(4)
+
+    d1.metric("GENERAL IMPORT DUTY", "21%")
+    d2.metric("VAT ON DUTY-PAID VALUE", "15%")
+    d3.metric("COST VS IMPORT VALUE", f"{LANDED_MULTIPLE:.2f}x")
+    d4.metric("INDIA PREFERENCE", "None yet")
+
+    st.caption(
+        "Sweet biscuits (HS 1905.31) face a 21% general duty, while EU, "
+        "UK and SADC suppliers enter duty-free. India and SACU signed "
+        "Terms of Reference for a preferential trade agreement on "
+        "12 August 2026, but negotiations have only begun. "
+        "Confirm the duty in the SARS tariff book before costing."
+    )
+
+    st.subheader("Import Competition: HS 1905 Bakery Products, 2023")
+
     fig = px.bar(
-        trade,
-        x="Trade Flow",
-        y="Value"
+        suppliers,
+        x="Supplier",
+        y="Share"
     )
 
     fig.update_traces(marker_color=GREEN)
 
+    fig.update_layout(yaxis_title="Share of import value (%)")
+
     show_chart(fig)
 
     st.caption(
-        "Trade values retained from the supplied project dataset; "
-        "confirm unit and reporting year."
+        "South Africa imported US$100.5 million of HS 1905 products in "
+        "2023, of which sweet biscuits were US$46.8 million (46.6%). "
+        "India was the largest supplier at 12.9% (US$13.0 million), "
+        "ahead of Bahrain (11.1%) and Malaysia (10.8%)."
     )
 
     st.subheader("Cultural Comparison")
@@ -1211,7 +1370,19 @@ elif selected == "Country & Trade":
     show_chart(fig)
 
     st.caption(
-        "Cultural values retained from the supplied project dataset."
+        "Hofstede scores (0–100). South Africa is less hierarchical "
+        "and more individualistic than India, so single-serve packs and "
+        "'treat yourself' messages fit, and reviews and in-store "
+        "sampling persuade more than celebrity endorsement."
+    )
+
+    st.info(
+        "Language: English-led packaging is practical. "
+        "Religion and diet: halal certification matters to Muslim "
+        "consumers and vegetarian labelling helps Indian-origin "
+        "shoppers. Brand relationship: most South Africans know "
+        "Britannia far less than Indian shoppers do, so it must earn "
+        "trust through sampling and visibility."
     )
 
 
@@ -1223,13 +1394,15 @@ elif selected == "Risk Intelligence":
 
     st.title("International Risk Intelligence")
 
-    st.metric(
-        "AVERAGE RISK SCORE",
-        f"{risk['Score'].mean():.1f} / 5"
-    )
+    m1, m2, m3, m4 = st.columns(4)
+
+    m1.metric("AVERAGE RISK SCORE", f"{AVG_RISK:.1f} / 25")
+    m2.metric("OVERALL LEVEL", risk_level(AVG_RISK))
+    m3.metric("HIGH RISKS", int((risk["Level"] == "High").sum()))
+    m4.metric("MEDIUM RISKS", int((risk["Level"] == "Medium").sum()))
 
     selected_risks = st.multiselect(
-        "Select risk categories",
+        "Select risks",
         risk["Factor"].tolist(),
         default=risk["Factor"].tolist()
     )
@@ -1241,19 +1414,35 @@ elif selected == "Risk Intelligence":
     if not filtered.empty:
 
         fig = px.bar(
-            filtered,
+            filtered.sort_values("Score"),
             x="Score",
             y="Factor",
             orientation="h",
-            range_x=[0, 5]
+            range_x=[0, 25],
+            color="Level",
+            color_discrete_map={
+                "High": "#C4524F",
+                "Medium": "#E0A030",
+                "Low": GREEN
+            }
         )
 
-        fig.update_traces(marker_color=GREEN)
+        fig.update_layout(yaxis_title=None)
 
-        show_chart(fig)
+        fig.add_vline(
+            x=15,
+            line_dash="dash",
+            line_color=MUTED,
+            annotation_text="High threshold (15)",
+            annotation_font_color=MUTED
+        )
+
+        show_chart(fig, height=420)
 
         st.dataframe(
-            filtered,
+            filtered[
+                ["Factor", "L", "I", "Score", "Level", "Response"]
+            ],
             use_container_width=True,
             hide_index=True
         )
@@ -1261,12 +1450,21 @@ elif selected == "Risk Intelligence":
     else:
 
         st.warning(
-            "Select at least one risk category."
+            "Select at least one risk."
         )
 
     st.caption(
-        "Scores are qualitative team assessments. "
-        "A score of 5 represents higher risk."
+        "Each risk is scored for likelihood (L) and impact (I) from 1 to 5; "
+        "score = L × I. High is 15 or more, Medium 8–14, Low below 8. "
+        "Scores are the author's judgement from the evidence in the report."
+    )
+
+    st.info(
+        "In PESTEL terms, duty and labelling are legal-political risks; "
+        "rand, demand and raw materials are economic; freight and port "
+        "delays are logistics risks. Cultural risk is low. Freight "
+        "deserves extra weight because West Asia tensions already "
+        "disrupted Britannia's international supply chain."
     )
 
 
@@ -1279,7 +1477,8 @@ elif selected == "Market Opportunity":
     st.title("Market Opportunity Intelligence")
 
     st.caption(
-        "Interactive scenario analysis using the 2023 market baseline."
+        "Interactive scenario analysis using the 2023 sweet biscuit "
+        "market baseline (ZAR 4.70 billion, GlobalData)."
     )
 
     growth = st.slider(
@@ -1298,6 +1497,14 @@ elif selected == "Market Opportunity":
         0.1
     )
 
+    rand_rate = st.slider(
+        "Rand per US dollar",
+        14.0,
+        20.0,
+        16.5,
+        0.1
+    )
+
     year = st.selectbox(
         "Forecast year",
         [2023, 2024, 2025, 2026, 2027, 2028],
@@ -1311,7 +1518,11 @@ elif selected == "Market Opportunity":
 
     estimated_sales = market_size * share / 100
 
-    a, b, c = st.columns(3)
+    sales_zar_m = estimated_sales * 1000
+
+    sales_usd_m = sales_zar_m / rand_rate
+
+    a, b, c, d = st.columns(4)
 
     a.metric(
         "PROJECTED MARKET",
@@ -1320,10 +1531,15 @@ elif selected == "Market Opportunity":
 
     b.metric(
         "ILLUSTRATIVE SALES",
-        f"ZAR {estimated_sales * 1000:.2f}M"
+        f"ZAR {sales_zar_m:.1f}M"
     )
 
     c.metric(
+        "IN US DOLLARS",
+        f"US$ {sales_usd_m:.2f}M"
+    )
+
+    d.metric(
         "MARKET SHARE",
         f"{share:.1f}%"
     )
@@ -1350,11 +1566,61 @@ elif selected == "Market Opportunity":
         marker_color=GLOW
     )
 
+    fig.update_layout(yaxis_title="ZAR billion")
+
     show_chart(fig)
 
     st.caption(
-        "Scenario calculation, not actual Britannia revenue or sales."
+        "Report case: 6% growth gives about ZAR 5.60 billion in 2026; "
+        "a 0.5% share is roughly ZAR 28 million, or about US$1.7 million "
+        "at 16.5 rand per dollar. This is the author's estimate, "
+        "not a published figure or actual Britannia revenue."
     )
+
+    st.subheader("Product Choice: Britannia Marie Gold")
+
+    p1, p2 = st.columns(2)
+
+    with p1:
+
+        st.markdown("**Why Marie Gold**")
+
+        st.write(
+            "South Africa has a growing sweet biscuit category, a "
+            "tea-time use occasion that matches the product, and a gap "
+            "for affordable, familiar plain biscuits. Marie Gold is "
+            "vegetarian and already sold online in South Africa "
+            "(248 g at R107, about R43 per 100 g, a cross-border "
+            "retail price). Good Day and NutriChoice suit later phases."
+        )
+
+        st.markdown("**Gap in the market**")
+
+        st.write(
+            "Local leaders compete on cream, chocolate and branded "
+            "cookies. A plain, low-fat, vitamin-fortified tea biscuit "
+            "at an everyday price is underserved outside Indian "
+            "grocery stores."
+        )
+
+    with p2:
+
+        st.markdown("**Market indicators**")
+
+        st.write(
+            "Wider bakery market: US$2.46 billion in 2025, rising to "
+            "US$3.22 billion by 2034 (about 2.95% a year, IMARC). "
+            "Hypermarkets and supermarkets hold the highest share of "
+            "sweet biscuit sales. Local leaders include Bakers "
+            "(the most scanned biscuit brand) and Eet-Sum-Mor."
+        )
+
+        st.markdown("**Threats**")
+
+        st.write(
+            "Supermarket private labels, local price wars and demand "
+            "for lower-sugar products."
+        )
 
 
 # ============================================================
@@ -1366,47 +1632,77 @@ elif selected == "Segmentation & STP":
     st.title("Customer Segmentation Intelligence")
 
     st.caption(
-        "Customer segment evaluation through weighted scoring."
+        "Five route-to-customer segments evaluated through weighted "
+        "scoring. Scores run from 1 (poor) to 5 (excellent)."
+    )
+
+    seg_base = pd.DataFrame({
+        "Segment": list(segment_scores.keys()),
+        "Base weights": [
+            weighted(v, base_weights) for v in segment_scores.values()
+        ],
+        "Growth-heavy weights": [
+            weighted(v, growth_weights) for v in segment_scores.values()
+        ]
+    })
+
+    seg_long = seg_base.melt(
+        id_vars="Segment",
+        var_name="Weighting",
+        value_name="Weighted Score"
     )
 
     fig = px.bar(
-        segments.sort_values("Score"),
-        x="Score",
-        y="Segment",
-        orientation="h",
-        range_x=[0, 5]
+        seg_long,
+        x="Segment",
+        y="Weighted Score",
+        color="Weighting",
+        barmode="group",
+        range_y=[0, 5],
+        color_discrete_map={
+            "Base weights": GREEN,
+            "Growth-heavy weights": "#648B76"
+        }
     )
 
-    fig.update_traces(marker_color=GREEN)
+    show_chart(fig, height=380)
 
-    show_chart(fig)
+    st.caption(
+        "Wholesale leads on base weights (3.45); e-commerce leads on "
+        "growth-heavy weights (3.80, with growth at 35% and size at 10%). "
+        "The ranking depends on the weights, and the top three segments "
+        "are close under base weights."
+    )
+
+    st.subheader("Segmentation Bases")
+
+    bases = pd.DataFrame({
+        "Base": [
+            "Geographic",
+            "Demographic",
+            "Psychographic",
+            "Behavioural"
+        ],
+        "Variables used": [
+            "Province and urban or township setting; Gauteng, "
+            "KwaZulu-Natal and Western Cape are the main metros",
+            "Income level, household type and community background, "
+            "including the Indian-origin community (about 2.6% of "
+            "the population)",
+            "Price consciousness, health attitude, comfort with "
+            "imported brands",
+            "Purchase channel, pack size bought, tea-time use, "
+            "brand loyalty"
+        ]
+    })
+
+    st.dataframe(
+        bases,
+        use_container_width=True,
+        hide_index=True
+    )
 
     st.subheader("Weighted Evaluation Matrix")
-
-    criteria = [
-        "Segment size",
-        "Affordability",
-        "Channel reach",
-        "Brand awareness",
-        "Competition",
-        "Profit potential"
-    ]
-
-    weights = [20, 20, 20, 20, 10, 10]
-
-    scores = {
-
-        "Indian-origin households": [2, 4, 5, 5, 4, 3],
-
-        "Price-sensitive mass market": [5, 5, 3, 1, 2, 2],
-
-        "Young urban professionals": [3, 3, 4, 2, 2, 3],
-
-        "Health-conscious families": [3, 2, 3, 1, 2, 3],
-
-        "Lunchbox and school-snack parents": [4, 4, 4, 4, 2, 3]
-
-    }
 
     custom_weights = []
 
@@ -1420,7 +1716,7 @@ elif selected == "Segmentation & STP":
                 criterion,
                 min_value=0,
                 max_value=100,
-                value=weights[i],
+                value=base_weights[i],
                 step=5,
                 key=f"weight_{i}"
             )
@@ -1433,12 +1729,9 @@ elif selected == "Segmentation & STP":
 
         results = []
 
-        for name, values in scores.items():
+        for name, values in segment_scores.items():
 
-            score = sum(
-                v * w
-                for v, w in zip(values, custom_weights)
-            ) / total
+            score = weighted(values, custom_weights)
 
             results.append({
                 "Segment": name,
@@ -1465,17 +1758,119 @@ elif selected == "Segmentation & STP":
             hide_index=True
         )
 
+        if total != 100:
+
+            st.caption(
+                f"Weights currently add up to {total}%. Scores are "
+                "normalised by the total, so rankings stay comparable."
+            )
+
     else:
 
         st.warning(
             "At least one criterion weight must be positive."
         )
 
+    st.caption(
+        "Default weights: size 25%, growth 20%, access 20%, competitive "
+        "intensity 15%, margin 10%, capability fit 10%. Competitive "
+        "intensity is scored so that higher means less intense."
+    )
+
+    st.subheader("Segments")
+
+    segment_table = pd.DataFrame({
+        "Segment": [
+            "A. Modern grocery chains",
+            "B. Wholesale and cash-and-carry",
+            "C. Informal trade and spaza shops",
+            "D. Indian-diaspora and ethnic grocers",
+            "E. E-commerce and quick commerce"
+        ],
+        "Who they are": [
+            "National supermarket groups (Shoprite, Pick n Pay, Spar); "
+            "want category fit, margin and promotion funding",
+            "Wholesalers supplying spaza shops, caterers and small "
+            "retailers; want bulk packs, low prices and reliable supply",
+            "Township and rural traders buying small quantities for "
+            "cash; price-sensitive",
+            "Indian-origin households, mainly in KwaZulu-Natal and "
+            "Gauteng; want a familiar taste from home",
+            "Younger urban shoppers who value convenience and discovery"
+        ],
+        "How Britannia reaches them": [
+            "Direct listings, usually after a distributor proves "
+            "sell-through",
+            "Importer-distributor",
+            "Wholesalers and van distributors",
+            "Specialist importers and community stores",
+            "Online marketplaces and grocery apps"
+        ]
+    })
+
+    st.dataframe(
+        segment_table,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.info(
+        "Decision: target wholesale buyers and diaspora grocers "
+        "together in Phase 1, using the diaspora segment to build brand "
+        "awareness. Add e-commerce in Phase 2 and approach grocery "
+        "chains once sell-through is proven."
+    )
+
+    st.subheader("Targeting")
+
+    st.write(
+        "Phase 1 uses concentrated targeting: two trade segments "
+        "reached through one importer-distributor, which keeps the "
+        "budget small. Phase 2 moves to differentiated targeting by "
+        "adding e-commerce listings and larger family packs for "
+        "grocery chains."
+    )
+
     st.subheader("Recommended Positioning")
 
     st.info(
-        "The light, trusted tea-time biscuit from India "
-        "that feels like home."
+        "The light, trusted tea-time biscuit from India that feels "
+        "like home."
+    )
+
+    st.markdown("**Positioning statement**")
+
+    st.write(
+        "For families and tea drinkers in South Africa who want a "
+        "familiar taste of home, Britannia Marie Gold is the light, "
+        "trusted tea biscuit that a generation grew up with, unlike "
+        "local cream and chocolate biscuits that compete on "
+        "indulgence rather than everyday habit."
+    )
+
+    st.markdown("**Proposed tagline:** \"Tea-time, the way you know it.\"")
+
+    st.markdown("**Points of differentiation**")
+
+    st.write(
+        "1. Heritage and trust: a brand founded in 1892 that is part "
+        "of Indian family life, which local brands cannot copy."
+    )
+    st.write(
+        "2. Light taste for dipping: a crisp plain biscuit made for "
+        "tea, in contrast to heavily flavoured options."
+    )
+    st.write(
+        "3. Range depth: Good Day, Tiger and NutriChoice let Britannia "
+        "trade shoppers up later, which a single-product importer "
+        "cannot."
+    )
+
+    st.caption(
+        "Perceptual map: on price and heritage axes, Marie Gold should "
+        "sit in the mid-price, high-heritage corner, a space local "
+        "brands and premium imports leave largely empty (qualitative "
+        "author judgement)."
     )
 
 
@@ -1487,24 +1882,71 @@ elif selected == "Entry Strategy":
 
     st.title("International Market Entry Strategy")
 
+    st.caption(
+        "Enter through a local importer-distributor, scale in three "
+        "phases, and commit to local production only once demand "
+        "is proven."
+    )
+
+    st.subheader("Entry Mode Evaluation")
+
+    entry_modes = pd.DataFrame({
+        "Entry mode": [
+            "Export through a local importer-distributor",
+            "Contract manufacturing in South Africa",
+            "Joint venture with a local food company",
+            "Own subsidiary and plant"
+        ],
+        "Capital and risk": [
+            "Low",
+            "Medium",
+            "Medium to high",
+            "High"
+        ],
+        "Control": [
+            "Medium",
+            "Medium",
+            "Shared",
+            "High"
+        ],
+        "Verdict": [
+            "Chosen for Phase 1",
+            "Option for Phase 3 to avoid the 21% duty and cut "
+            "currency exposure",
+            "Considered once volumes justify it",
+            "Too risky before demand is proven"
+        ]
+    })
+
+    st.dataframe(
+        entry_modes,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.subheader("Phased Roadmap")
+
     phases = [
 
         {
             "Phase": "PHASE 01",
             "Timeline": "0–12 Months",
-            "Strategy": "Community Launch",
+            "Strategy": "Wholesale and Community Launch",
             "Detail": (
-                "Local importer-distributor and "
-                "Indian grocery stores."
+                "Appoint an importer-distributor, supply wholesalers "
+                "and diaspora grocers in KwaZulu-Natal and Gauteng. "
+                "Gate: repeat orders and a clear landed-cost margin."
             )
         },
 
         {
             "Phase": "PHASE 02",
             "Timeline": "12–24 Months",
-            "Strategy": "Supermarket Expansion",
+            "Strategy": "Online and Chains",
             "Detail": (
-                "Target lunchbox parents and larger family packs."
+                "Add e-commerce listings and pilot one national chain "
+                "with family packs. "
+                "Gate: sell-through at or above the category average."
             )
         },
 
@@ -1513,8 +1955,10 @@ elif selected == "Entry Strategy":
             "Timeline": "24–36 Months",
             "Strategy": "Localisation",
             "Detail": (
-                "Evaluate contract manufacturing "
-                "and regional expansion."
+                "Explore contract manufacturing or a partnership if no "
+                "trade preference has arrived, add a lower-sugar "
+                "variant, and use Britannia's Kenya unit as a "
+                "reference for African production."
             )
         }
 
@@ -1536,7 +1980,11 @@ elif selected == "Entry Strategy":
 
             st.write(phase["Detail"])
 
-    st.subheader("Marketing Mix · 4Ps")
+    st.caption(
+        "Targets are proposals for management to adjust."
+    )
+
+    st.subheader("Marketing Mix · 4Ps (Phase 1)")
 
     a, b = st.columns(2)
 
@@ -1545,16 +1993,18 @@ elif selected == "Entry Strategy":
         st.markdown("**PRODUCT**")
 
         st.write(
-            "Marie Gold with suitable local labelling, "
-            "halal certification where required "
-            "and suitable pack sizes."
+            "Marie Gold with English labelling, halal certification "
+            "where needed, and a larger family pack. Recipe and name "
+            "stay standard; labels, pack sizes and promotions adapt "
+            "locally."
         )
 
         st.markdown("**PRICE**")
 
         st.write(
-            "Value pricing based on landed cost, "
-            "duties, freight and retailer margins."
+            "Everyday-value pricing set against local tea biscuits "
+            "after a full landed-cost calculation including duty, VAT "
+            "and freight. The R107 online price is a ceiling to beat."
         )
 
     with b:
@@ -1562,16 +2012,33 @@ elif selected == "Entry Strategy":
         st.markdown("**PLACE**")
 
         st.write(
-            "Importer-distributor, Indian grocery stores, "
-            "supermarkets and online grocery."
+            "Importer-distributor, wholesalers and diaspora grocers, "
+            "then online grocery and chains."
         )
 
         st.markdown("**PROMOTION**")
 
         st.write(
-            "Community events, sampling and "
-            "tea-time social campaigns."
+            "Distributor trade incentives, in-store sampling, Diwali "
+            "and community events, and a \"tea-time\" social media "
+            "theme."
         )
+
+    st.subheader("Risk Controls")
+
+    st.info(
+        "Agree rand or US-dollar pricing with the distributor for "
+        "fixed periods, hold limited stock, plan shipping with buffer "
+        "time, use credit protection with new buyers, and track "
+        "margins monthly."
+    )
+
+    st.subheader("Next Step")
+
+    st.success(
+        "Confirm duty, halal and labelling rules, then build the "
+        "landed-cost model before approaching distributors."
+    )
 
 
 # ============================================================
